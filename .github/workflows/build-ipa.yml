@@ -138,7 +138,7 @@ jobs:
           echo "fingerprint=${fp}" >> "$GITHUB_OUTPUT"
 
       - name: Restore SPM cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.DERIVED_DATA_PATH }}/SourcePackages
           key: spm-${{ runner.os }}-${{ steps.spm.outputs.fingerprint }}-v3
@@ -146,7 +146,7 @@ jobs:
             spm-${{ runner.os }}-
 
       - name: Restore Xcode compilation cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.DERIVED_DATA_PATH }}/CompilationCache.noindex
           # NOTE: project.pbxproj is deliberately NOT in this key. It carries
@@ -172,7 +172,7 @@ jobs:
       # lets Xcode skip unchanged files. This is the standard fix for caching
       # DerivedData on GitHub Actions.
       - name: Restore DerivedData
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.DERIVED_DATA_PATH }}/Build/Intermediates.noindex
@@ -577,7 +577,7 @@ jobs:
           echo "fingerprint=${fp}" >> "$GITHUB_OUTPUT"
 
       - name: Restore SPM cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.DERIVED_DATA_PATH }}/SourcePackages
           key: spm-${{ runner.os }}-${{ steps.spm.outputs.fingerprint }}-v3
@@ -588,7 +588,7 @@ jobs:
       # jobs cannot clobber each other's entries. A Release build shares most
       # of its compilation units with the test build.
       - name: Restore Xcode compilation cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.DERIVED_DATA_PATH }}/CompilationCache.noindex
           key: xcode-cas-device-${{ runner.os }}-${{ hashFiles('HermesMobile/**/*.swift', 'HermesMobile/**/*.m', 'Package.resolved', '**/Package.resolved') }}
@@ -601,7 +601,7 @@ jobs:
       # unit-build — restore the products, then restore source mtimes from git,
       # or Xcode treats every file as changed and the cache does nothing.
       - name: Restore DerivedData (device)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.DERIVED_DATA_PATH }}/Build/Intermediates.noindex
