@@ -399,7 +399,7 @@ jobs:
           echo "boot started for ${SIMULATOR_UDID}; it overlaps cache restore and download"
 
       - name: Download test build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: test-build
           # Extracted at DerivedData/ so both Build/Products and SourcePackages
@@ -687,7 +687,7 @@ jobs:
           echo "artifact: $PRODUCT-$(cat VERSION).ipa"
 
       - name: Download IPA
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ipa
 
