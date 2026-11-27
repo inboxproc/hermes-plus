@@ -765,7 +765,7 @@ jobs:
         # Never when the guard above found a delivered version: a Release that
         # already carries an artifact is not re-published.
         if: steps.delivered.outputs.skip != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.VER }}
           name: Hermex Plus ${{ steps.version.outputs.VER }}
