@@ -1,8 +1,9 @@
 # Compile failure
 
-Run: https://github.com/inboxproc/hermes-plus/actions/runs/46049060019
-Commit: 1901a105a7edc748c7537fb3f1e676c16a6b166a
+Run: https://github.com/inboxproc/hermes-plus/actions/runs/46050360896
+Commit: 626c063e135aea709a6207d8a4caeec8c43eefde
 
 ```
-/Users/runner/work/hermes-plus/hermes-plus/HermesMobile/Features/Chat/ScheduledMessagesView.swift:474:25: error: referencing initializer 'init(_:content:)' on 'ForEach' requires that 'ScheduledMessageAttachment' conform to 'Identifiable'
+/Users/runner/work/hermes-plus/hermes-plus/HermesMobileTests/APIClientTests.swift:202:13: error: type 'MockAuthAPIClient' does not conform to protocol 'AuthAPIClient'
+/Users/runner/work/hermes-plus/hermes-plus/HermesMobileTests/OnboardingViewModelIdentityTests.swift:181:17: error: type 'OnboardingViewModelIdentityTests.GatedAuthAPIClient' does not conform to protocol 'AuthAPIClient'
 ```
