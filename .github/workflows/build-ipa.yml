@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check release invariants
         run: python3 scripts/release-check.py --allow-untagged
       - name: Check local gates
@@ -115,7 +115,7 @@ jobs:
       DERIVED_DATA_PATH: DerivedData
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Full history: the mtime restore maps each file to the commit that
           # touched it, and a shallow clone has only the tip.
@@ -318,7 +318,7 @@ jobs:
       TEST_WORKERS: 1
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Правильный вид кэша для этого проекта — КЭШ ЗАГРУЗКИ (SPM), а не кэш сборки.
       #
@@ -545,7 +545,7 @@ jobs:
       SCHEME: HermesMobile
       DERIVED_DATA_PATH: DerivedData
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Read version and identity
         id: version
@@ -669,7 +669,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Read version and identity
         id: version
