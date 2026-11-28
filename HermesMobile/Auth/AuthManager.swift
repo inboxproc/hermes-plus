@@ -156,8 +156,11 @@ final class AuthManager {
                 return
             }
 
-            // A password provider means we sign in with the dashboard credentials.
-            if providers.passwordProvider != nil {
+            // A proxy already authenticated this request: no credential to ask for,
+            // even when the server also advertises a password provider.
+            if providers.isAlreadySignedIn {
+                // Nothing to send.
+            } else if providers.passwordProvider != nil {
                 let credentials = resolvedCredentials(username: username, password: password, for: serverURL)
                 guard !credentials.username.isEmpty else {
                     lastErrorMessage = String(localized: "Enter the server username.")
@@ -174,10 +177,9 @@ final class AuthManager {
                     lastErrorMessage = APIError.unauthorized.localizedDescription
                     return
                 }
-            } else if providers.isAlreadySignedIn || providers.providers.isEmpty {
-                // Trusted-header proxy already authenticated this client, or the
-                // server has authentication off entirely: nothing to send, just
-                // save the server as connected (#3, private/Tailscale servers).
+            } else if providers.providers.isEmpty {
+                // Authentication is off entirely (private/Tailscale server):
+                // nothing to sign in to, so saving the server is the outcome.
             } else {
                 // No password provider and not already signed in: we can't log in.
                 lastErrorMessage = String(localized: "This server does not support password sign-in.")
@@ -254,7 +256,7 @@ final class AuthManager {
                 return .failed
             }
 
-            if providers.passwordProvider != nil {
+            if providers.passwordProvider != nil, !providers.isAlreadySignedIn {
                 let credentials = resolvedCredentials(username: username, password: password, for: serverURL)
                 guard !credentials.username.isEmpty, !credentials.password.isEmpty else {
                     // Not an error — the UI reveals the credential form and retries.

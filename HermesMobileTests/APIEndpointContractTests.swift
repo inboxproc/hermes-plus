@@ -9,10 +9,10 @@ import UniformTypeIdentifiers
 final class ContractReadinessTests: XCTestCase {
     func testEndpointContractMatrixMatchesPinnedUpstreamPaths() throws {
         let contracts: [EndpointContract] = [
-            .init(name: "health", method: "GET", endpoint: .health, path: "/health"),
+            .init(name: "health", method: "GET", endpoint: .health, path: "/api/health"),
             .init(name: "auth status", method: "GET", endpoint: .authStatus, path: "/api/auth/status"),
-            .init(name: "login", method: "POST", endpoint: .login, path: "/api/auth/login"),
-            .init(name: "logout", method: "POST", endpoint: .logout, path: "/api/auth/logout"),
+            .init(name: "login", method: "POST", endpoint: .dashboardLogin, path: "/dash/auth/password-login"),
+            .init(name: "logout", method: "POST", endpoint: .logout, path: "/dash/auth/logout"),
             .init(name: "sessions", method: "GET", endpoint: .sessions(), path: "/api/sessions"),
             .init(
                 name: "sessions including archived",

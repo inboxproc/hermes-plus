@@ -659,10 +659,16 @@ enum Endpoint {
         return components?.url ?? url
     }
 
-    /// The dashboard's proxy prefix for plugin routes: empty when the base already ends
-    /// in `/dash` (a link that opens the dashboard directly), `dash/` for the plain host.
+    /// The dashboard's proxy prefix for plugin routes: `dash/` for a bare host,
+    /// empty when the base URL already carries a path (`/dash`, `/root`, …) — that
+    /// path is itself the mount point.
     static func kanbanMount(in baseURL: URL) -> String {
-        baseURL.path.contains("/dash") ? "" : "dash/"
+        // A base URL that already carries a path IS the mount point — e.g.
+        // `https://host/root` means the dashboard is served under /root, so the
+        // plugin lives at /root/api/plugins/kanban (no extra /dash). Only a bare
+        // host needs the dashboard's default /dash prefix.
+        let path = baseURL.path
+        return (path.isEmpty || path == "/") ? "dash/" : ""
     }
 
     private func kanbanTaskURL(relativeTo baseURL: URL, cardID: String, suffix: String = "") -> URL {

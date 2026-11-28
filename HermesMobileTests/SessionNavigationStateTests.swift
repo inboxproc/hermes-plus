@@ -18,7 +18,7 @@ final class SessionNavigationStateTests: XCTestCase {
         let second = SessionSummary(sessionId: "session-2", title: "Two")
         var state = SessionNavigationState(lastSelectedSessionID: "session-2")
 
-        state.restoreIfNeeded(from: [first, second])
+        state.restoreIfNeeded(from: [first, second], activeProfileName: "default")
 
         XCTAssertEqual(state.destination, .session(second))
         XCTAssertEqual(state.lastSelectedSessionID, "session-2")
@@ -27,7 +27,7 @@ final class SessionNavigationStateTests: XCTestCase {
     func testRestoreClearsStoredSelectionWhenSessionNoLongerExists() {
         var state = SessionNavigationState(lastSelectedSessionID: "missing")
 
-        state.restoreIfNeeded(from: [SessionSummary(sessionId: "session-1")])
+        state.restoreIfNeeded(from: [SessionSummary(sessionId: "session-1")], activeProfileName: "default")
 
         XCTAssertNil(state.destination)
         XCTAssertNil(state.lastSelectedSessionID)
@@ -36,7 +36,7 @@ final class SessionNavigationStateTests: XCTestCase {
     func testRestorePreservesStoredSelectionWhenSessionListIsNotAuthoritative() {
         var state = SessionNavigationState(lastSelectedSessionID: "session-1")
 
-        state.restoreIfNeeded(from: [], clearsMissingSelection: false)
+        state.restoreIfNeeded(from: [], clearsMissingSelection: false, activeProfileName: "default")
 
         XCTAssertNil(state.destination)
         XCTAssertEqual(state.lastSelectedSessionID, "session-1")
@@ -46,7 +46,7 @@ final class SessionNavigationStateTests: XCTestCase {
         let stored = SessionSummary(sessionId: "stored")
         var state = SessionNavigationState(lastSelectedSessionID: "stored")
 
-        state.restoreIfNeeded(from: [stored], pendingDeepLinkedSessionID: "deep-linked")
+        state.restoreIfNeeded(from: [stored], pendingDeepLinkedSessionID: "deep-linked", activeProfileName: "default")
 
         XCTAssertNil(state.destination)
         XCTAssertEqual(state.lastSelectedSessionID, "stored")
@@ -57,14 +57,14 @@ final class SessionNavigationStateTests: XCTestCase {
         var state = SessionNavigationState(lastSelectedSessionID: "stored")
 
         let deepLinkedSessionID = state.beginDeepLinkedSessionLoad(id: "deep-linked")
-        state.restoreIfNeeded(from: [stored], pendingDeepLinkedSessionID: nil)
+        state.restoreIfNeeded(from: [stored], pendingDeepLinkedSessionID: nil, activeProfileName: "default")
 
         XCTAssertEqual(deepLinkedSessionID, "deep-linked")
         XCTAssertNil(state.destination)
         XCTAssertEqual(state.lastSelectedSessionID, "stored")
 
         state.finishDeepLinkedSessionLoad(id: deepLinkedSessionID)
-        state.restoreIfNeeded(from: [stored], pendingDeepLinkedSessionID: nil)
+        state.restoreIfNeeded(from: [stored], pendingDeepLinkedSessionID: nil, activeProfileName: "default")
 
         XCTAssertEqual(state.destination, .session(stored))
     }
@@ -73,7 +73,7 @@ final class SessionNavigationStateTests: XCTestCase {
         let stored = SessionSummary(sessionId: "stored")
         var state = SessionNavigationState(lastSelectedSessionID: "stored")
 
-        state.restoreIfNeeded(from: [stored], pendingDeepLinkedSessionID: "   ")
+        state.restoreIfNeeded(from: [stored], pendingDeepLinkedSessionID: "   ", activeProfileName: "default")
 
         XCTAssertEqual(state.destination, .session(stored))
     }
@@ -107,7 +107,7 @@ final class SessionNavigationStateTests: XCTestCase {
         var state = SessionNavigationState(lastSelectedSessionID: "session-1")
         state.select(route)
 
-        state.restoreIfNeeded(from: [SessionSummary(sessionId: "session-1")])
+        state.restoreIfNeeded(from: [SessionSummary(sessionId: "session-1")], activeProfileName: "default")
 
         XCTAssertEqual(state.destination, .newChat(route))
         XCTAssertEqual(state.lastSelectedSessionID, "session-1")
@@ -119,7 +119,7 @@ final class SessionNavigationStateTests: XCTestCase {
         var state = SessionNavigationState(lastSelectedSessionID: "stored")
         state.select(deepLinked)
 
-        state.restoreIfNeeded(from: [stored])
+        state.restoreIfNeeded(from: [stored], activeProfileName: "default")
 
         XCTAssertEqual(state.destination, .session(deepLinked))
         XCTAssertEqual(state.lastSelectedSessionID, "deep-linked")

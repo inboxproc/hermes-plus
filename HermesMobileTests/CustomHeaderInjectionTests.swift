@@ -391,7 +391,7 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
 
     func testPasswordlessServerShowsMessageAndDoesNotLogIn() async throws {
         let keychain = InMemoryKeychainStore()
-        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: [AuthProviderInfo(name: "oidc", displayName: "SSO", supportsPassword: false)]))
         let manager = makeManager(keychain: keychain, store: CustomHeaderStore(), client: client)
 
         await manager.configure(serverURLString: "https://example.test", username: "", password: "secret")
@@ -411,7 +411,7 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
         // Trusted-header "already signed in" is not visible via discovery yet; it is
         // deferred (see C in UNIFIED_AUTH_ARCHITECTURE_AUDIT.md).
         let keychain = InMemoryKeychainStore()
-        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: [AuthProviderInfo(name: "oidc", displayName: "SSO", supportsPassword: false)]))
         let manager = makeManager(keychain: keychain, store: CustomHeaderStore(), client: client)
 
         await manager.configure(serverURLString: "https://example.test", username: "", password: "")
@@ -425,7 +425,7 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
     /// Browser and app cookie jars are separate, so external browser sign-in
     /// cannot be presented as a way to authenticate Hermex.
     func testOIDCServerReportsNoPasswordProvider() async throws {
-        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: [AuthProviderInfo(name: "oidc", displayName: "SSO", supportsPassword: false)]))
         let manager = makeManager(keychain: InMemoryKeychainStore(), store: CustomHeaderStore(), client: client)
 
         await manager.configure(serverURLString: "https://example.test", username: "", password: "")
@@ -440,7 +440,7 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
     /// Trusted-header mode where the proxy did not authorize this request is a
     /// different problem again, with a different thing to try.
     func testTrustedHeaderServerWithoutASessionExplainsTheProxy() async throws {
-        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: [AuthProviderInfo(name: "oidc", displayName: "SSO", supportsPassword: false)]))
         let manager = makeManager(keychain: InMemoryKeychainStore(), store: CustomHeaderStore(), client: client)
 
         await manager.configure(serverURLString: "https://example.test", username: "", password: "")

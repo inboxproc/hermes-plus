@@ -388,6 +388,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
         let manager = makeGatedManager(client, keychain: keychain)
         let viewModel = OnboardingViewModel()
         viewModel.serverURLString = "https://example.com"
+        viewModel.username = "u"
         viewModel.password = "typed-secret"
 
         // Probe pair + configure's probe pair; login itself is ungated.

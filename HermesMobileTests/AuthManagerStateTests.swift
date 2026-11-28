@@ -424,7 +424,7 @@ final class AuthManagerStateTests: XCTestCase {
         )
         await manager.configure(
             serverURLString: "https://a.test",
-            username: "",
+            username: "u",
             password: "secret",
             customHeaders: [CustomHeader(name: "X-A", value: "a-token")]
         )
@@ -432,7 +432,7 @@ final class AuthManagerStateTests: XCTestCase {
 
         let outcome = await manager.addServer(
             serverURLString: "https://b.test",
-            username: "",
+            username: "u",
             password: "wrong",
             customHeaders: [CustomHeader(name: "X-B", value: "b-token")]
         )
