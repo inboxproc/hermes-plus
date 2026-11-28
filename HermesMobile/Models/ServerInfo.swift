@@ -77,4 +77,8 @@ struct AuthProvidersResponse: Decodable {
     var passwordProvider: AuthProviderInfo? {
         providers.first { $0.supportsPassword == true }
     }
+
+    /// The server already considers this client signed in (trusted-header proxy).
+    /// Then no credential is needed and the server can be saved without a login step.
+    var isAlreadySignedIn: Bool = false
 }

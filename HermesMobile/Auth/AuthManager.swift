@@ -171,6 +171,13 @@ final class AuthManager {
                     lastErrorMessage = APIError.unauthorized.localizedDescription
                     return
                 }
+            } else if providers.isAlreadySignedIn {
+                // Trusted-header proxy already authenticated this client; nothing to
+                // send, just save the server as signed in (#3).
+            } else {
+                // No password provider and not already signed in: we can't log in.
+                lastErrorMessage = String(localized: "This server does not support password sign-in.")
+                return
             }
 
             // Persist only on success: the server URL and the headers that reached it.

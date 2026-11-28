@@ -230,13 +230,11 @@ final class MockAuthAPIClient: AuthAPIClient, @unchecked Sendable {
     /// a password provider; disabled → none. Keeps the existing test matrix
     /// (`authEnabled: true/false`) meaningful without rewriting every case.
     private static func providers(for status: AuthStatusResponse) -> AuthProvidersResponse {
-        guard status.authEnabled == true else {
-            return AuthProvidersResponse(providers: [])
-        }
-        return AuthProvidersResponse(
-            providers: [
-                AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)
-            ]
+        AuthProvidersResponse(
+            providers: status.authEnabled == true
+                ? [AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)]
+                : [],
+            isAlreadySignedIn: status.loggedIn == true
         )
     }
 

@@ -371,7 +371,7 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
         let manager = makeManager(
             keychain: keychain,
             store: store,
-            client: MockAuthAPIClient(authStatus: AuthStatusResponse(authEnabled: false, loggedIn: false))
+            client: MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
         )
 
         await manager.configure(
@@ -452,11 +452,9 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
     /// `addServer` carried a verbatim copy of the same inference and has to
     /// behave identically.
     func testAddServerAcceptsAServerThatAlreadySignedUsIn() async throws {
-        let client = MockAuthAPIClient(authStatus: AuthStatusResponse(
-            authEnabled: true,
-            loggedIn: true,
-            passwordAuthEnabled: false,
-            trustedAuthEnabled: true
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(
+            providers: [AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)],
+            isAlreadySignedIn: true
         ))
         let manager = AuthManager(
             keychain: InMemoryKeychainStore(),
@@ -474,10 +472,12 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
         let keychain = InMemoryKeychainStore()
         // authEnabled true but passwordAuthEnabled nil (older server) must NOT be
         // treated as passkey-only — the regression-safety rule from #255.
-        let client = MockAuthAPIClient(authStatus: AuthStatusResponse(authEnabled: true, loggedIn: false))
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(
+            providers: [AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)]
+        ))
         let manager = makeManager(keychain: keychain, store: CustomHeaderStore(), client: client)
 
-        await manager.configure(serverURLString: "https://example.test", username: "", password: "secret")
+        await manager.configure(serverURLString: "https://example.test", username: "u", password: "secret")
 
         XCTAssertEqual(client.loginPasswords, ["secret"])
         XCTAssertEqual(manager.state, .loggedIn(server: try XCTUnwrap(URL(string: "https://example.test"))))
@@ -486,10 +486,12 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
 
     func testNoHeaderConfigureDoesNotPersistHeaderEntry() async throws {
         let keychain = InMemoryKeychainStore()
-        let client = MockAuthAPIClient(authStatus: AuthStatusResponse(authEnabled: true, loggedIn: false))
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(
+            providers: [AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)]
+        ))
         let manager = makeManager(keychain: keychain, store: CustomHeaderStore(), client: client)
 
-        await manager.configure(serverURLString: "https://example.test", username: "", password: "secret")
+        await manager.configure(serverURLString: "https://example.test", username: "u", password: "secret")
 
         XCTAssertEqual(manager.state, .loggedIn(server: try XCTUnwrap(URL(string: "https://example.test"))))
         XCTAssertNil(keychain.scopedValue(.customHeaders, scope: "https://example.test"))
@@ -501,7 +503,7 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
         let manager = makeManager(
             keychain: keychain,
             store: store,
-            client: MockAuthAPIClient(authStatus: AuthStatusResponse(authEnabled: false, loggedIn: false))
+            client: MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
         )
 
         await manager.configure(
@@ -529,7 +531,7 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
         let manager = makeManager(
             keychain: keychain,
             store: store,
-            client: MockAuthAPIClient(authStatus: AuthStatusResponse(authEnabled: false))
+            client: MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
         )
         // The editor is reachable only while signed in, so establish an active
         // server first; headers then persist under that server's scoped key (#16).
@@ -555,7 +557,7 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
         let manager = makeManager(
             keychain: keychain,
             store: store,
-            client: MockAuthAPIClient(authStatus: AuthStatusResponse(authEnabled: false))
+            client: MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
         )
         await manager.configure(serverURLString: "https://example.test", username: "", password: "")
 
@@ -580,7 +582,7 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
         _ = makeManager(
             keychain: keychain,
             store: store,
-            client: MockAuthAPIClient(authStatus: AuthStatusResponse(authEnabled: false))
+            client: MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
         )
 
         // On launch the blob is hydrated into the live snapshot, moved under the
