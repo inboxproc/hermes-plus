@@ -80,5 +80,23 @@ struct AuthProvidersResponse: Decodable {
 
     /// The server already considers this client signed in (trusted-header proxy).
     /// Then no credential is needed and the server can be saved without a login step.
-    var isAlreadySignedIn: Bool = false
+    var isAlreadySignedIn: Bool
+
+    init(providers: [AuthProviderInfo], isAlreadySignedIn: Bool = false) {
+        self.providers = providers
+        self.isAlreadySignedIn = isAlreadySignedIn
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case providers
+        case isAlreadySignedIn = "is_already_signed_in"
+    }
+
+    /// The server only sends `providers`; `is_already_signed_in` is optional.
+    /// A synthesised decoder would demand it and fail on every real response.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        providers = try container.decode([AuthProviderInfo].self, forKey: .providers)
+        isAlreadySignedIn = try container.decodeIfPresent(Bool.self, forKey: .isAlreadySignedIn) ?? false
+    }
 }

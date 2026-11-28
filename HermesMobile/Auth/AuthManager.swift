@@ -27,9 +27,12 @@ final class AuthManager {
     /// or nil when password login is available.
     nonisolated static func unsupportedSignInMessage(for providers: AuthProvidersResponse) -> String? {
         if providers.passwordProvider != nil { return nil }
-        if providers.providers.isEmpty {
-            return String(localized: "This server does not advertise an authentication provider.")
-        }
+        // No providers advertised at all: the server has authentication turned
+        // off (a Tailscale-only or private server). Nothing to sign in with and
+        // nothing to sign in to — saving the server is the correct outcome.
+        if providers.providers.isEmpty { return nil }
+        // A proxy already authenticated this client; no credential to send.
+        if providers.isAlreadySignedIn { return nil }
         return String(localized: "This server does not support password sign-in.")
     }
 
@@ -171,9 +174,10 @@ final class AuthManager {
                     lastErrorMessage = APIError.unauthorized.localizedDescription
                     return
                 }
-            } else if providers.isAlreadySignedIn {
-                // Trusted-header proxy already authenticated this client; nothing to
-                // send, just save the server as signed in (#3).
+            } else if providers.isAlreadySignedIn || providers.providers.isEmpty {
+                // Trusted-header proxy already authenticated this client, or the
+                // server has authentication off entirely: nothing to send, just
+                // save the server as connected (#3, private/Tailscale servers).
             } else {
                 // No password provider and not already signed in: we can't log in.
                 lastErrorMessage = String(localized: "This server does not support password sign-in.")

@@ -7,27 +7,45 @@ import UniformTypeIdentifiers
 @testable import HermesMobile
 
 final class APIClientAuthAndErrorTests: APIClientTestCase {
+    private static let passwordProviders = AuthProvidersResponse(
+        providers: [AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)]
+    )
+
     func testOnboardingPasswordValidationOnlyRequiresKnownAuthEnabledPassword() {
         XCTAssertEqual(
             OnboardingViewModel.passwordValidationMessage(
-                authStatus: AuthStatusResponse(authEnabled: true, loggedIn: false),
+                providers: Self.passwordProviders,
+                username: "u",
                 password: " \n "
             ),
             OnboardingViewModel.emptyPasswordMessage
         )
         XCTAssertNil(
             OnboardingViewModel.passwordValidationMessage(
-                authStatus: AuthStatusResponse(authEnabled: true, loggedIn: false),
+                providers: Self.passwordProviders,
+                username: "u",
                 password: "secret"
             )
         )
         XCTAssertNil(
             OnboardingViewModel.passwordValidationMessage(
-                authStatus: AuthStatusResponse(authEnabled: false, loggedIn: false),
+                providers: AuthProvidersResponse(providers: []),
+                username: "",
                 password: ""
             )
         )
-        XCTAssertNil(OnboardingViewModel.passwordValidationMessage(authStatus: nil, password: ""))
+        XCTAssertNil(OnboardingViewModel.passwordValidationMessage(providers: nil, username: "", password: ""))
+    }
+
+    func testOnboardingPasswordValidationRequiresUsernameWhenPasswordProviderIsPresent() {
+        XCTAssertEqual(
+            OnboardingViewModel.passwordValidationMessage(
+                providers: Self.passwordProviders,
+                username: "  ",
+                password: "secret"
+            ),
+            OnboardingViewModel.emptyUsernameMessage
+        )
     }
 
     @MainActor
@@ -79,7 +97,7 @@ final class APIClientAuthAndErrorTests: APIClientTestCase {
             serverRegistry: ServerRegistry.inMemory()
         )
 
-        await manager.configure(serverURLString: "https://example.test", username: "", password: "")
+        await manager.configure(serverURLString: "https://example.test", username: "u", password: "")
 
         XCTAssertEqual(client.loginPasswords, [])
         XCTAssertNil(keychain.savedValues[.serverURL])
@@ -97,7 +115,7 @@ final class APIClientAuthAndErrorTests: APIClientTestCase {
             serverRegistry: ServerRegistry.inMemory()
         )
 
-        await manager.configure(serverURLString: "https://example.test", username: "", password: "secret")
+        await manager.configure(serverURLString: "https://example.test", username: "u", password: "secret")
 
         let expectedURL = try XCTUnwrap(URL(string: "https://example.test"))
         XCTAssertEqual(client.loginPasswords, ["secret"])

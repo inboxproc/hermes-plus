@@ -522,7 +522,7 @@ final class AuthManagerStateTests: XCTestCase {
             serverRegistry: ServerRegistry.inMemory()
         )
 
-        await manager.configure(serverURLString: serverURLString, username: "", password: "secret")
+        await manager.configure(serverURLString: serverURLString, username: "u", password: "secret")
 
         guard case .loggedIn = manager.state else {
             XCTFail("Expected loggedIn state after configure, got \(manager.state)")
