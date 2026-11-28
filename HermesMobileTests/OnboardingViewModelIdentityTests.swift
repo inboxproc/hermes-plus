@@ -5,7 +5,7 @@ import XCTest
 /// stale-probe fencing, and configure ownership in `OnboardingViewModel`.
 ///
 /// Async schedules are driven by a *phase-aware* gate: every network call site
-/// (`health`, `authStatus`) registers under its own name, so each test releases
+/// (`health`, `authProviders`) registers under its own name, so each test releases
 /// exactly the events the real schedule produces — a full accepted `connect()`
 /// emits FOUR gated events (the ViewModel's probe pair, then the internal
 /// re-probe pair inside `AuthManager.configure`). Waiters are deadline-bounded,
@@ -48,7 +48,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
             CustomHeader(name: "X-Auth", value: "a"),
             CustomHeader(name: "X-Auth", value: "b")
         ])
-        XCTAssertNotNil(viewModel.authStatus)
+        XCTAssertNotNil(viewModel.authProviders)
 
         // Effective X-Auth flips b -> a (setValue is last-write-wins), so the
         // cached trusted-header status no longer describes this credential.
@@ -57,7 +57,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
             CustomHeader(name: "X-Auth", value: "a")
         ]
 
-        XCTAssertNil(viewModel.authStatus, "duplicate-name reorder changes the sent credential and must invalidate")
+        XCTAssertNil(viewModel.authProviders, "duplicate-name reorder changes the sent credential and must invalidate")
         XCTAssertNil(viewModel.connectionMessage)
         XCTAssertNil(viewModel.errorMessage)
     }
@@ -69,14 +69,14 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
 
         viewModel.customHeaders[0].value = "Bearer new"
 
-        XCTAssertNil(viewModel.authStatus, "element edits from CustomHeadersEditor must invalidate")
+        XCTAssertNil(viewModel.authProviders, "element edits from CustomHeadersEditor must invalidate")
         XCTAssertNil(viewModel.connectionMessage)
         XCTAssertNil(viewModel.errorMessage)
     }
 
     func testNewlineBrokenRowIsNotPartOfIdentity() {
         let viewModel = makeProbedViewModel(headers: [])
-        XCTAssertNotNil(viewModel.authStatus)
+        XCTAssertNotNil(viewModel.authProviders)
 
         // A row whose raw value contains a newline is never sent
         // (CustomHeader.isApplicable), so adding it must not change identity —
@@ -85,11 +85,11 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
 
         // Broken row is filtered from identity; identity equals the empty set,
         // which matches the probed empty-header identity → no churn.
-        XCTAssertNotNil(viewModel.authStatus)
+        XCTAssertNotNil(viewModel.authProviders)
 
         // But replacing it with an applicable row does change identity.
         viewModel.customHeaders = [CustomHeader(name: "Authorization", value: "Bearer xyz")]
-        XCTAssertNil(viewModel.authStatus, "applicable header changes the credential and must invalidate")
+        XCTAssertNil(viewModel.authProviders, "applicable header changes the credential and must invalidate")
     }
 
     func testURLEditClearsInheritedBannersEvenWithoutProbe() {
@@ -111,11 +111,11 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
     // MARK: - Phase-aware gated client double (drives real async schedules)
 
     /// Distinct call sites inside `AuthManager`'s probe: `testConnection(client:)`
-    /// awaits `health()` and then `authStatus()`, so a parked probe is always in
+    /// awaits `health()` and then `authProviders()`, so a parked probe is always in
     /// exactly one known phase.
     enum GatePhase: String {
         case health
-        case authStatus
+        case authProviders
     }
 
     @MainActor
@@ -174,7 +174,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
     }
 
     enum GatedProbeOutcome {
-        case succeed(AuthStatusResponse)
+        case succeed(AuthProvidersResponse)
         case fail(String)
     }
 
@@ -195,18 +195,8 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
             return HealthResponse(status: "ok", sessions: nil, activeStreams: nil, uptimeSeconds: nil)
         }
 
-        func authStatus() async throws -> AuthStatusResponse {
-            await gatekeeper.gate(.authStatus)
-            switch outcome {
-            case .succeed(let status):
-                return status
-            case .fail(let message):
-                throw URLError(.badServerResponse, userInfo: [NSLocalizedDescriptionKey: message])
-            }
-        }
-
         func authProviders() async throws -> AuthProvidersResponse {
-            await gatekeeper.gate(.authStatus)
+            await gatekeeper.gate(.authProviders)
             switch outcome {
             case .succeed(let status):
                 return status.authEnabled == true
@@ -240,7 +230,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
         let gatekeeper = OnboardingGateKeeper()
         let manager = makeGatedManager(GatedAuthAPIClient(
             gatekeeper: gatekeeper,
-            outcome: .succeed(AuthStatusResponse(authEnabled: false, loggedIn: true))
+            outcome: .succeed(AuthProvidersResponse(providers: [], isAlreadySignedIn: true))
         ))
         let viewModel = OnboardingViewModel()
         viewModel.serverURLString = "https://first.example.com"
@@ -252,7 +242,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
         gatekeeper.drainEverything()
         await probeTask.value
 
-        XCTAssertNil(viewModel.authStatus, "stale success for old identity must be discarded")
+        XCTAssertNil(viewModel.authProviders, "stale success for old identity must be discarded")
         XCTAssertFalse(viewModel.isWorking)
         XCTAssertFalse(viewModel.isConnectionLocked)
     }
@@ -275,7 +265,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
         await probeTask.value
 
         XCTAssertNil(viewModel.errorMessage, "stale rejection must not surface under new identity")
-        XCTAssertNil(viewModel.authStatus)
+        XCTAssertNil(viewModel.authProviders)
     }
 
     // MARK: - Connection lock (inputs frozen across probe AND configure)
@@ -287,7 +277,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
         let gatekeeper = OnboardingGateKeeper()
         let manager = makeGatedManager(GatedAuthAPIClient(
             gatekeeper: gatekeeper,
-            outcome: .succeed(AuthStatusResponse(authEnabled: true, loggedIn: false))
+            outcome: .succeed(AuthProvidersResponse(providers: [AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)], isAlreadySignedIn: false))
         ))
         let viewModel = OnboardingViewModel()
         viewModel.serverURLString = "https://example.com"
@@ -315,13 +305,13 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
     // Edit during connect(): the operation must be refused outright while the
     // form is locked (inputs frozen), so no second connect can interleave.
     // The accepted connect walks its REAL four-phase schedule: the ViewModel's
-    // own probe (health, authStatus) followed by configure's internal re-probe
-    // (health, authStatus).
+    // own probe (health, authProviders) followed by configure's internal re-probe
+    // (health, authProviders).
     func testConnectWhileLockedIsRefused() async {
         let gatekeeper = OnboardingGateKeeper()
         let client = GatedAuthAPIClient(
             gatekeeper: gatekeeper,
-            outcome: .succeed(AuthStatusResponse(authEnabled: false, loggedIn: true))
+            outcome: .succeed(AuthProvidersResponse(providers: [], isAlreadySignedIn: true))
         )
         let manager = makeGatedManager(client)
         let viewModel = OnboardingViewModel()
@@ -332,7 +322,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
 
         XCTAssertTrue(viewModel.isConnectionLocked, "inputs frozen for the whole connect")
         XCTAssertTrue(viewModel.isWorking)
-        XCTAssertNil(viewModel.authStatus, "probe still in flight — capability-derived UI must not be asserted yet")
+        XCTAssertNil(viewModel.authProviders, "probe still in flight — capability-derived UI must not be asserted yet")
 
         let loginsBefore = client.configuredPasswords.count
 
@@ -354,7 +344,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
         XCTAssertEqual(client.configuredPasswords.count, loginsBefore, "passwordless configure must not attempt login")
         XCTAssertFalse(viewModel.isConnectionLocked, "lock released after settle")
         XCTAssertFalse(viewModel.isWorking)
-        XCTAssertNotNil(viewModel.authStatus, "accepted connect settles to a probed status")
+        XCTAssertNotNil(viewModel.authProviders, "accepted connect settles to a probed status")
         XCTAssertNil(viewModel.errorMessage)
         XCTAssertFalse(viewModel.isPasswordRequired, "trusted-header status hides the password field AFTER settle")
         XCTAssertEqual(manager.state, .loggedIn(server: URL(string: "https://example.com")!))
@@ -367,7 +357,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
         let gatekeeper = OnboardingGateKeeper()
         let client = GatedAuthAPIClient(
             gatekeeper: gatekeeper,
-            outcome: .succeed(AuthStatusResponse(authEnabled: false, loggedIn: false))
+            outcome: .succeed(AuthProvidersResponse(providers: [], isAlreadySignedIn: false))
         )
         let keychain = InMemoryKeychainStore()
         let manager = makeGatedManager(client, keychain: keychain)
@@ -392,7 +382,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
         let gatekeeper = OnboardingGateKeeper()
         let client = GatedAuthAPIClient(
             gatekeeper: gatekeeper,
-            outcome: .succeed(AuthStatusResponse(authEnabled: true, loggedIn: false))
+            outcome: .succeed(AuthProvidersResponse(providers: [AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)], isAlreadySignedIn: false))
         )
         let keychain = InMemoryKeychainStore()
         let manager = makeGatedManager(client, keychain: keychain)
@@ -413,7 +403,7 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
     // MARK: - Schedule helpers
 
     /// Drives the canonical accepted-connect schedule: probe pair (health,
-    /// authStatus), then configure's internal re-probe pair, releasing each
+    /// authProviders), then configure's internal re-probe pair, releasing each
     /// phase in order so every await settles before its successor is released.
     @MainActor
     final class AcceptedConnectDriver {
@@ -482,7 +472,7 @@ extension OnboardingViewModelIdentityTests {
             savedServer: URL(string: "https://trusted.example.com"),
             savedHeaders: headers
         )
-        viewModel.authStatus = AuthStatusResponse(authEnabled: true, loggedIn: true)
+        viewModel.authProviders = AuthProvidersResponse(providers: [AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)], isAlreadySignedIn: true)
         // Seed the probed identity the way testConnection would after success.
         viewModel.seedProbedIdentityForTesting()
         return viewModel
