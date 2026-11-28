@@ -1,7 +1,7 @@
 # Compile failure
 
-Run: https://github.com/inboxproc/hermes-plus/actions/runs/46130595943
-Commit: a7531e232305787b44bf66f576f27314afd50de0
+Run: https://github.com/inboxproc/hermes-plus/actions/runs/46131485288
+Commit: 228e5643c5c936c2d611ea3a78942773f672750d
 
 ```
 /Users/runner/work/hermes-plus/hermes-plus/HermesMobileTests/CustomHeaderInjectionTests.swift:374:39: error: missing argument for parameter 'authStatus' in call
