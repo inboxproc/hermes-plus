@@ -1605,10 +1605,11 @@ struct ChatView: View {
 
     @ViewBuilder
     private var messageContent: some View {
-        // HERMEX-FORK: `displayedReasoningGroups` walks every message with string work per element
-        // (the hot `replacingOccurrences` path measured in the 3.7.0 device telemetry). Read it
-        // ONCE per body pass and share the value — upstream reads it a single time as well, so
-        // this is a return to their shape, not a new deviation.
+        // HERMEX-FORK (4.4.0): `displayedReasoningGroups` is memoized on the view
+        // model and recomputed once per messages/offset/archived change. It used to
+        // be a computed property read here in `body`, which re-walked every message
+        // with string work per element on every body pass (the 07:31 / 09:34
+        // watchdog transgressions). Reading it now is a plain stored-property load.
         let displayedReasoningGroups = viewModel.displayedReasoningGroups
         VStack(spacing: 0) {
             if let latestPinnedID = pinnedMessageIDs.last,

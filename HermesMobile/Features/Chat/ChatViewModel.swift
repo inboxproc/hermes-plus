@@ -354,13 +354,19 @@ final class ChatViewModel {
     private(set) var completedReasoningGroups: [ReasoningGroup] = [] {
         didSet { recomputeDisplayedTranscriptMessages() }
     }
-    var displayedReasoningGroups: [ReasoningGroup] {
-        Self.reasoningDisplayGroups(
-            messages: messages,
-            messageOffset: messagesOffset,
-            archivedGroups: completedReasoningGroups
-        )
-    }
+    /// Memoized reasoning display groups — the same contract as
+    /// `displayedTranscriptMessages` below.
+    ///
+    /// HERMEX-FORK (4.4.0): this used to be a computed property that
+    /// `ChatView.messageContent` read inside `body`. Every body pass re-walked
+    /// the whole message array twice and re-ran `strippedVisibleAssistantEcho`
+    /// (`replacingOccurrences` per visible paragraph) plus `normalizedReasoningKey`
+    /// twice per candidate — and `transcriptMessages` called it a second time in
+    /// the same pass. On a long streaming chat that put seconds of string work on
+    /// the main thread per frame, which is what the 07:31 / 09:34 scene-update
+    /// watchdog transgressions measured. Recomputed once per `messages` /
+    /// `messagesOffset` / `completedReasoningGroups` change instead.
+    private(set) var displayedReasoningGroups: [ReasoningGroup] = []
     func completedToolCallGroupsForAnchor(_ anchorMessageID: String?) -> [ToolCallGroup] {
         completedToolCallGroupLookup.groups(anchorMessageID: anchorMessageID)
     }
@@ -384,6 +390,26 @@ final class ChatViewModel {
     private func recomputeDisplayedTranscriptMessages() {
         HeavyOperationTracker.begin("recomputeDisplayedTranscriptMessages")
         defer { HeavyOperationTracker.end() }
+        // HERMEX-FORK (4.4.0): reasoning groups are computed ONCE here and shared
+        // with the transcript pass below. Before, `transcriptMessages` recomputed
+        // them internally while `ChatView.body` recomputed them again — two full
+        // passes of `strippedVisibleAssistantEcho` + `normalizedReasoningKey` per
+        // frame on a long streaming chat.
+        displayedReasoningGroups = Self.reasoningDisplayGroups(
+            messages: messages,
+            messageOffset: messagesOffset,
+            archivedGroups: completedReasoningGroups
+        )
+        // Activity anchors historically ignore archived groups. Reuse the value
+        // computed above when there is nothing archived (the common case); only
+        // pay for a second pass when archived groups actually exist.
+        let activityReasoningGroups = completedReasoningGroups.isEmpty
+            ? displayedReasoningGroups
+            : Self.reasoningDisplayGroups(
+                messages: messages,
+                messageOffset: messagesOffset,
+                archivedGroups: []
+            )
         // Incremental fast path (hot, per-token): the streaming assistant message
         // is ALWAYS the last element (ensureStreamingAssistantMessage appends it),
         // so "content-only growth" is detectable in O(1) from the previous tail
@@ -422,7 +448,11 @@ final class ChatViewModel {
             // cheaply identifiable — recompute the transcript. This is the rare
             // non-streaming path, not the per-token hot path.
             HeavyOperationTracker.begin("transcriptMessages.fullRecompute")
-            displayedTranscriptMessages = Self.transcriptMessages(from: messages, messageOffset: messagesOffset)
+            displayedTranscriptMessages = Self.transcriptMessages(
+                from: messages,
+                messageOffset: messagesOffset,
+                reasoningGroups: activityReasoningGroups
+            )
             HeavyOperationTracker.end()
         } else {
             // Structural change (insert/delete/reorder) — full recompute. This is
@@ -430,7 +460,11 @@ final class ChatViewModel {
             // ARC/SwiftUI re-diff on long chats; instrument it so a freeze here is
             // named, not <redacted>.
             HeavyOperationTracker.begin("transcriptMessages.structuralRecompute")
-            displayedTranscriptMessages = Self.transcriptMessages(from: messages, messageOffset: messagesOffset)
+            displayedTranscriptMessages = Self.transcriptMessages(
+                from: messages,
+                messageOffset: messagesOffset,
+                reasoningGroups: activityReasoningGroups
+            )
             HeavyOperationTracker.end()
             recomputeCompressionReferenceCard()
         }
@@ -7137,6 +7171,7 @@ extension ChatViewModel {
     nonisolated static func transcriptMessages(
         from messages: [ChatMessage],
         messageOffset: Int? = nil,
+        reasoningGroups: [ReasoningGroup]? = nil,
         preservingEmptyAssistantID: String? = nil,
         renderedActivityAnchorIDs: Set<String>? = nil
     ) -> [TranscriptMessage] {
@@ -7144,6 +7179,7 @@ extension ChatViewModel {
             from: messages,
             messageOffset: messageOffset,
             hidingStreamingAssistantID: nil,
+            reasoningGroups: reasoningGroups,
             preservingEmptyAssistantID: preservingEmptyAssistantID,
             renderedActivityAnchorIDs: renderedActivityAnchorIDs
         )
@@ -7153,12 +7189,13 @@ extension ChatViewModel {
         from messages: [ChatMessage],
         messageOffset: Int? = nil,
         hidingStreamingAssistantID streamingAssistantID: String?,
+        reasoningGroups: [ReasoningGroup]? = nil,
         preservingEmptyAssistantID: String? = nil,
         renderedActivityAnchorIDs: Set<String>? = nil
     ) -> [TranscriptMessage] {
         let offset = max(0, messageOffset ?? 0)
         let activityAnchorIDs = renderedActivityAnchorIDs ?? transcriptActivityAnchorIDs(
-            reasoningGroups: reasoningDisplayGroups(
+            reasoningGroups: reasoningGroups ?? reasoningDisplayGroups(
                 messages: messages,
                 messageOffset: messageOffset,
                 archivedGroups: []
