@@ -199,10 +199,10 @@ final class OnboardingViewModelIdentityTests: XCTestCase {
             await gatekeeper.gate(.authProviders)
             switch outcome {
             case .succeed(let status):
-                return status.authEnabled == true
+                return status.passwordProvider != nil
                     ? AuthProvidersResponse(providers: [
                         AuthProviderInfo(name: "basic", displayName: nil, supportsPassword: true)
-                    ])
+                    ], isAlreadySignedIn: status.isAlreadySignedIn)
                     : AuthProvidersResponse(providers: [])
             case .fail(let message):
                 throw URLError(.badServerResponse, userInfo: [NSLocalizedDescriptionKey: message])
