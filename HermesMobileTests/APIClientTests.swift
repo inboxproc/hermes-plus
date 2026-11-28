@@ -226,6 +226,24 @@ final class MockAuthAPIClient: AuthAPIClient, @unchecked Sendable {
         self.logoutBehavior = logoutBehavior
     }
 
+    /// Provider-model initialiser: the discovery call is the source of truth in
+    /// 4.4, so tests can state the server's advertised providers directly instead
+    /// of translating through the legacy auth-status shape.
+    init(
+        authProviders: AuthProvidersResponse,
+        loginResponse: LoginResponse = LoginResponse(ok: true, message: nil, error: nil),
+        logoutBehavior: LogoutBehavior = .succeed
+    ) {
+        self.authProvidersResponse = authProviders
+        self.authStatusResponse = AuthStatusResponse(
+            authEnabled: !authProviders.providers.isEmpty,
+            loggedIn: authProviders.isAlreadySignedIn,
+            passwordAuthEnabled: authProviders.passwordProvider != nil
+        )
+        self.loginResponse = loginResponse
+        self.logoutBehavior = logoutBehavior
+    }
+
     /// Maps the legacy `authStatus` probe onto the provider model: auth enabled →
     /// a password provider; disabled → none. Keeps the existing test matrix
     /// (`authEnabled: true/false`) meaningful without rewriting every case.
