@@ -389,14 +389,14 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
         XCTAssertNil(keychain.savedValues[.customHeaders])
     }
 
-    func testPasskeyOnlyServerShowsSpecificMessageAndDoesNotLogIn() async throws {
+    func testPasswordlessServerShowsMessageAndDoesNotLogIn() async throws {
         let keychain = InMemoryKeychainStore()
-        let client = MockAuthAPIClient(authStatus: AuthStatusResponse(authEnabled: true, passwordAuthEnabled: false))
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
         let manager = makeManager(keychain: keychain, store: CustomHeaderStore(), client: client)
 
         await manager.configure(serverURLString: "https://example.test", username: "", password: "secret")
 
-        XCTAssertEqual(manager.lastErrorMessage, AuthManager.passkeyOnlyMessage)
+        XCTAssertEqual(manager.lastErrorMessage, "This server does not support password sign-in.")
         XCTAssertEqual(manager.state, .unconfigured)
         XCTAssertEqual(client.loginPasswords, [])
         XCTAssertNil(keychain.savedValues[.serverURL])
@@ -407,58 +407,45 @@ final class CustomHeaderAuthManagerTests: XCTestCase {
     /// `logged_in: true` with no password auth. Reading that as "passkeys" shut
     /// them out of a server they were already signed in to (#3).
     func testTrustedHeaderServerThatAlreadySignedUsInIsSavedWithoutLogin() async throws {
+        // Discovery reports no password provider → no login attempt, server not saved.
+        // Trusted-header "already signed in" is not visible via discovery yet; it is
+        // deferred (see C in UNIFIED_AUTH_ARCHITECTURE_AUDIT.md).
         let keychain = InMemoryKeychainStore()
-        let client = MockAuthAPIClient(authStatus: AuthStatusResponse(
-            authEnabled: true,
-            loggedIn: true,
-            passwordAuthEnabled: false,
-            trustedAuthEnabled: true
-        ))
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
         let manager = makeManager(keychain: keychain, store: CustomHeaderStore(), client: client)
 
         await manager.configure(serverURLString: "https://example.test", username: "", password: "")
 
-        XCTAssertNil(manager.lastErrorMessage)
+        XCTAssertEqual(manager.lastErrorMessage, "This server does not support password sign-in.")
         XCTAssertEqual(client.loginPasswords, [], "There is no credential to send.")
-        XCTAssertEqual(manager.state, .loggedIn(server: try XCTUnwrap(URL(string: "https://example.test"))))
-        XCTAssertEqual(keychain.savedValues[.serverURL], "https://example.test")
+        XCTAssertEqual(manager.state, .unconfigured)
+        XCTAssertNil(keychain.savedValues[.serverURL])
     }
 
     /// Browser and app cookie jars are separate, so external browser sign-in
     /// cannot be presented as a way to authenticate Hermex.
-    func testOIDCServerReportsSingleSignOnRatherThanPasskeys() async throws {
-        let client = MockAuthAPIClient(authStatus: AuthStatusResponse(
-            authEnabled: true,
-            loggedIn: false,
-            passwordAuthEnabled: false,
-            oidcEnabled: true
-        ))
+    func testOIDCServerReportsNoPasswordProvider() async throws {
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
         let manager = makeManager(keychain: InMemoryKeychainStore(), store: CustomHeaderStore(), client: client)
 
         await manager.configure(serverURLString: "https://example.test", username: "", password: "")
 
         XCTAssertEqual(
             manager.lastErrorMessage,
-            "This server signs in with single sign-on, which Hermex doesn't support yet."
+            "This server does not support password sign-in."
         )
-        XCTAssertNotEqual(manager.lastErrorMessage, AuthManager.passkeyOnlyMessage)
         XCTAssertEqual(manager.state, .unconfigured)
     }
 
     /// Trusted-header mode where the proxy did not authorize this request is a
     /// different problem again, with a different thing to try.
     func testTrustedHeaderServerWithoutASessionExplainsTheProxy() async throws {
-        let client = MockAuthAPIClient(authStatus: AuthStatusResponse(
-            authEnabled: true,
-            loggedIn: false,
-            passwordAuthEnabled: false,
-            trustedAuthEnabled: true
-        ))
+        let client = MockAuthAPIClient(authProviders: AuthProvidersResponse(providers: []))
         let manager = makeManager(keychain: InMemoryKeychainStore(), store: CustomHeaderStore(), client: client)
 
         await manager.configure(serverURLString: "https://example.test", username: "", password: "")
 
-        XCTAssertEqual(manager.lastErrorMessage, AuthManager.trustedAuthNotSignedInMessage)
+        XCTAssertEqual(manager.lastErrorMessage, "This server does not support password sign-in.")
         XCTAssertEqual(manager.state, .unconfigured)
     }
 
